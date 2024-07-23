@@ -1,0 +1,50 @@
+//@version=5
+strategy("Supertrend with 5% Target and 1% Stop Loss", overlay=true)
+
+// Fonction pour calculer le Supertrend
+supertrend(factor, atrPeriod) =>
+    atr = ta.atr(atrPeriod)
+    src = (high + low) / 2
+    upperBand = src + (factor * atr)
+    lowerBand = src - (factor * atr)
+    dir = 1
+    dir := src > nz(dir[1]) ? dir[1] : src < nz(dir[1]) ? -1 : dir[1]
+    supertrend = dir == 1 ? lowerBand : upperBand
+    [supertrend, dir]
+
+factor = input(3.0, title="Factor")
+atrPeriod = input(10, title="ATR Period")
+[supertrend, dir] = supertrend(factor, atrPeriod)
+
+plot(supertrend, color = dir == 1 ? color.green : color.red, linewidth=2, title="Supertrend")
+
+var float entryPrice = na
+var float stopLossPrice = na
+var float takeProfitPrice = na
+
+// Conditions d'entrée
+if (dir == 1 and ta.crossover(close, supertrend))
+    entryPrice := close
+    stopLossPrice := entryPrice * 0.99
+    takeProfitPrice := entryPrice * 1.05
+    strategy.entry("Long", strategy.long)
+else if (dir == -1 and ta.crossunder(close, supertrend))
+    entryPrice := close
+    stopLossPrice := entryPrice * 1.01
+    takeProfitPrice := entryPrice * 0.95
+    strategy.entry("Short", strategy.short)
+
+// Conditions de sortie
+if (strategy.position_size > 0)
+    // Position longue
+    if (close <= stopLossPrice)
+        strategy.close("Long", comment="Stop Loss")
+    if (close >= takeProfitPrice)
+        strategy.close("Long", comment="Take Profit")
+else if (strategy.position_size < 0)
+    // Position courte
+    if (close >= stopLossPrice)
+        strategy.close("Short", comment="Stop Loss")
+    if (close <= takeProfitPrice)
+        strategy.close("Short", comment="Take Profit")
+
